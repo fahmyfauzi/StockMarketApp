@@ -1,7 +1,10 @@
 package com.plcoding.stockmarketapp.data.repository
 
+import com.plcoding.stockmarketapp.data.csv.CSVParser
+import com.plcoding.stockmarketapp.data.csv.CompanyListingParser
 import com.plcoding.stockmarketapp.data.local.StockDatabase
 import com.plcoding.stockmarketapp.data.mapper.toCompanyListing
+import com.plcoding.stockmarketapp.data.mapper.toCompanyListingEntity
 import com.plcoding.stockmarketapp.data.remote.StockApi
 import com.plcoding.stockmarketapp.domain.model.CompanyListing
 import com.plcoding.stockmarketapp.domain.repository.StockRepository
@@ -24,7 +27,8 @@ import javax.inject.Singleton
 @Singleton
 class StockRepositoryImpl  @Inject constructor(
     val api:StockApi,
-    val db:StockDatabase
+    val db:StockDatabase,
+    val companyListingParser: CSVParser<CompanyListing>
 ) : StockRepository{
 
     private val dao = db.dao
@@ -35,6 +39,7 @@ class StockRepositoryImpl  @Inject constructor(
      *
      * @param fetchFromRemote Menentukan apakah data harus diambil dari sumber eksternal atau tidak.
      * @param query Kata kunci pencarian yang dapat digunakan untuk menyaring hasil (opsional).
+     * @property companyListingParser Instance dari [CSVParser] untuk parsing data CSV menjadi objek [CompanyListing].
      * @return Aliran ([Flow]) yang menghasilkan objek [Resource] yang berisi daftar perusahaan.
      */
     override suspend fun getCompanyListings(
@@ -62,16 +67,35 @@ class StockRepositoryImpl  @Inject constructor(
 
             val remoteListing = try {
                 val response = api.getListings()
+                companyListingParser.parse(response.byteStream())
 
             }catch (e: IOException){
                 // Tangani kesalahan IO (misalnya, ketika tidak ada koneksi internet)
                 e.printStackTrace()
                 emit(Resource.Error("Couldn't load data"))
+                null
 
             }catch (e: HttpException){
                 // Tangani kesalahan HTTP (misalnya, respons gagal dari server)
                 e.printStackTrace()
                 emit(Resource.Error("Couldn't load data"))
+                null
+            }
+
+            // Jika data dari sumber eksternal berhasil diambil, simpan ke basis data lokal.
+            remoteListing?.let {listings->
+                // Update basis data lokal dengan data yang baru diambil dari sumber eksternal
+                dao.clearCompanyListings()
+                dao.insertCompanyListings(
+                    listings.map { it.toCompanyListingEntity() }
+                )
+                // Emit hasil akhir yang terdiri dari data dari basis data lokal setelah update
+                emit(Resource.Success(
+                    data  = dao
+                        .searchCompanyListing("")
+                        .map{it.toCompanyListing()}
+                ))
+                emit(Resource.Loading(false))
             }
         }
     }
