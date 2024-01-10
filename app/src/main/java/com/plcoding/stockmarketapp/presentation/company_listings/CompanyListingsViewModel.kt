@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.plcoding.stockmarketapp.domain.repository.StockRepository
 import com.plcoding.stockmarketapp.util.Resource
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -22,11 +23,16 @@ import javax.inject.Inject
  *
  * @property repository Instance dari [StockRepository] untuk mengambil data perusahaan.
  */
+@HiltViewModel
 class CompanyListingsViewModel @Inject constructor(
     private val repository: StockRepository
 ) : ViewModel() {
     // Mutable state untuk menyimpan status dan data perusahaan yang dapat diubah.
     var state by mutableStateOf(CompanyListingsState())
+
+    init {
+        getCompanyListings()
+    }
 
     // Job untuk melacak pekerjaan pencarian yang sedang berlangsung.
     private var searchJob:Job? =null

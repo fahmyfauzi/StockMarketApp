@@ -1,7 +1,6 @@
 package com.plcoding.stockmarketapp.data.repository
 
 import com.plcoding.stockmarketapp.data.csv.CSVParser
-import com.plcoding.stockmarketapp.data.csv.CompanyListingParser
 import com.plcoding.stockmarketapp.data.local.StockDatabase
 import com.plcoding.stockmarketapp.data.mapper.toCompanyListing
 import com.plcoding.stockmarketapp.data.mapper.toCompanyListingEntity
@@ -26,9 +25,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class StockRepositoryImpl  @Inject constructor(
-    val api:StockApi,
-    val db:StockDatabase,
-    val companyListingParser: CSVParser<CompanyListing>
+    private val api:StockApi,
+    private val db:StockDatabase,
+    private val companyListingParser: CSVParser<CompanyListing>
 ) : StockRepository{
 
     private val dao = db.dao
